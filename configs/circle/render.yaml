@@ -1,0 +1,3 @@
+case_name: "circle"
+filename: "samples"
+checkpoint_step: "step-000040004"

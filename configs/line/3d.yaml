@@ -1,0 +1,10 @@
+gate_pkl_file: "objects_IDs/base_gate_IRL.pickle"
+gsplat_path: "../outputs/line/splatfacto/2025-05-09_151825"
+load_checkpoint: "step-000039999.ckpt"
+to_save_checkpoint: "step-000040003.ckpt"
+gate_poses:
+  - [-1.5, -2.0, -0.2, -1.57, 0.0, 0.0]
+  - [-1.5, -3.5, -0.0, -1.57, 0.0, 0.0]
+  - [-1.5, -5.0, 0.2, -1.57, 0.0, 0.0]
+
+

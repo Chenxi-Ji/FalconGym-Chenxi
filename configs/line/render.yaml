@@ -1,0 +1,3 @@
+case_name: "line"
+filename: "traj"
+checkpoint_step: "step-000040003"
