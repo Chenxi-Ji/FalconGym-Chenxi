@@ -103,7 +103,7 @@ def construct_gate_track(
 
 
 if __name__ == "__main__":
-   ### Default command: python3 scripts/generate_3D_gsplat.py --config configs/uturn/3d.yaml
+   ### Default command: python3 scripts/generate_3D_gsplat.py --config configs/${case_name}/3d.yaml
    parser = argparse.ArgumentParser(description="Load configuration.")
    parser.add_argument("--config", type=str, required=True, help="Path to the YAML configuration file.")
    

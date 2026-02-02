@@ -223,25 +223,27 @@ def generate_samples(trajectory, tangents, dynamic_radius_set, N_samples, direct
     return np.array(samples)
 
 ### Plot
-def generate_gate_circle(point, tangent, radius=0.2, num_points=100):
+def generate_gate_circle(point, tangent, outer_radius=0.2, height=0.1, num_points=100, num_slices=5):
     """
-    Generate a 3D circle representing a gate based on its tangent.
+    Generate a hollow cylindrical region representing a gate with multiple circles between the top and bottom surfaces.
 
     Args:
-        x, y, z (float): Center of the gate.
+        point (list): Center of the gate [x, y, z].
         tangent (list): Tangent vector [dx, dy, dz] defining the gate's orientation.
-        radius (float): Radius of the gate.
+        outer_radius (float): Outer radius of the gate.
+        height (float): Height of the cylindrical region.
         num_points (int): Number of points to generate the circle.
+        num_slices (int): Number of slices between the top and bottom surfaces.
 
     Returns:
-        np.ndarray: Points representing the circle.
+        np.ndarray: Points representing the hollow cylindrical region.
     """
-    # Normalize
+    inner_radius = outer_radius * 0.85  # Define inner radius for hollow effect
+    # Normalize tangent
     tangent = tangent / (np.linalg.norm(tangent) + 1e-8)
 
     # Find two orthogonal vectors to the tangent
     if np.allclose(tangent, [1, 0, 0]) or np.allclose(tangent, [-1, 0, 0]):
-        # Special case: tangent is along x-axis
         orthogonal1 = np.array([0, 1, 0])
     else:
         orthogonal1 = np.cross(tangent, [1, 0, 0])
@@ -249,17 +251,29 @@ def generate_gate_circle(point, tangent, radius=0.2, num_points=100):
 
     orthogonal2 = np.cross(tangent, orthogonal1)
 
-    # Generate points for the circle in the plane defined by the tangent
+    # Generate points for the outer and inner circles
     theta = np.linspace(0, 2 * np.pi, num_points)
-    circle_points = (
-        radius * np.outer(np.cos(theta), orthogonal1) +
-        radius * np.outer(np.sin(theta), orthogonal2)
+    outer_circle = (
+        outer_radius * np.outer(np.cos(theta), orthogonal1) +
+        outer_radius * np.outer(np.sin(theta), orthogonal2)
+    )
+    inner_circle = (
+        inner_radius * np.outer(np.cos(theta), orthogonal1) +
+        inner_radius * np.outer(np.sin(theta), orthogonal2)
     )
 
-    # Translate the circle to the gate's position
-    circle_points += np.array(point)
+    # Generate slices between the top and bottom surfaces
+    slice_positions = np.linspace(-height / 2, height / 2, num_slices)
+    hollow_cylinder = []
 
-    return circle_points
+    for z in slice_positions:
+        hollow_cylinder.append(outer_circle + np.array(point) + z * tangent)
+        hollow_cylinder.append(inner_circle + np.array(point) + z * tangent)
+
+    # Combine all slices into a single array
+    hollow_cylinder = np.vstack(hollow_cylinder)
+
+    return hollow_cylinder
 
 def generate_cylinder(point, tangent, direction, radius=0.2, num_points=100, num_slices=10):
     """
@@ -327,17 +341,17 @@ def plot_trajectory(trajectory, tangents, start_pose, end_pose, gate_poses, gate
     ax = fig.add_subplot(111, projection='3d')
 
     # Plot the trajectory
-    ax.plot(trajectory[:, 0], trajectory[:, 1], trajectory[:, 2], label='Smooth Trajectory', color='blue')
+    ax.plot(trajectory[:, 0], trajectory[:, 1], trajectory[:, 2], label='Traj', color='black')
 
     # Plot the gates as circles based on their tangents
     for i, gate in enumerate(gate_poses):
         gate_point = gate[:3]
         gate_tangent = orientation_to_direction(*gate[3:])
         circle = generate_gate_circle(gate_point, gate_tangent, gate_radius)
-        if i == 0:  # Add label onlgenerate_gate_circley for the first gate
-            ax.plot(circle[:, 0], circle[:, 1], circle[:, 2], color='red', label='Gate')
+        if i == 0:  # Add label only for the first gate
+            ax.plot(circle[:, 0], circle[:, 1], circle[:, 2], color='blue', label='Gate')
         else:
-            ax.plot(circle[:, 0], circle[:, 1], circle[:, 2], color='red')
+            ax.plot(circle[:, 0], circle[:, 1], circle[:, 2], color='blue')
 
     # Initialize variables for dynamic radius calculation
     if samples is not None: 
@@ -347,33 +361,44 @@ def plot_trajectory(trajectory, tangents, start_pose, end_pose, gate_poses, gate
         for i, (point, tangent, dynamic_radius) in enumerate(zip(trajectory, tangents, dynamic_radius_set)):
             direction = trajectory[min(i + 1, len(trajectory) - 1)] - point  # Direction for the cylinder
             cylinder = generate_cylinder(point, tangent, direction, dynamic_radius)
-            ax.plot(cylinder[:, 0], cylinder[:, 1], cylinder[:, 2], color='cyan', alpha=0.3)
+            if i == 0:  # Add label only for the first tube
+                ax.plot(cylinder[:, 0], cylinder[:, 1], cylinder[:, 2], color='cyan', alpha=0.3, label='ODD')
+            else:
+                ax.plot(cylinder[:, 0], cylinder[:, 1], cylinder[:, 2], color='cyan', alpha=0.3)
 
     # Plot the start point
-    ax.scatter(*start_pose[:3], color='green', label='Start Point')
+    ax.scatter(*start_pose[:3], color='green', label='Start Point', s=10)
 
     # Plot the end point
     ax.scatter(*end_pose[:3], color='purple', label='End Point')
         
 
-    # Set axis limits to the same range
-    x_min, x_max = np.min(trajectory[:, 0]), np.max(trajectory[:, 0])
-    y_min, y_max = np.min(trajectory[:, 1]), np.max(trajectory[:, 1])
-    z_min, z_max = np.min(trajectory[:, 2]), np.max(trajectory[:, 2])
-    max_range = max(x_max - x_min, y_max - y_min, z_max - z_min) / 2.0
+    # # Set axis limits to the same range
+    # x_min, x_max = np.min(trajectory[:, 0]), np.max(trajectory[:, 0])
+    # y_min, y_max = np.min(trajectory[:, 1]), np.max(trajectory[:, 1])
+    # z_min, z_max = np.min(trajectory[:, 2])
+    # max_range = max(x_max - x_min, y_max - y_min, z_max - z_min) / 2.0
 
-    mid_x = (x_max + x_min) / 2.0
-    mid_y = (y_max + y_min) / 2.0
-    mid_z = (z_max + z_min) / 2.0
+    # mid_x = (x_max + x_min) / 2.0
+    # mid_y = (y_max + y_min) / 2.0
+    # mid_z = (z_max + z_min) / 2.0
 
-    ax.set_xlim(mid_x - max_range, mid_x + max_range)
-    ax.set_ylim(mid_y - max_range, mid_y + max_range)
-    ax.set_zlim(mid_z - max_range, mid_z + max_range)
+    # ax.set_xlim(mid_x - max_range, mid_x + max_range)
+    # ax.set_ylim(mid_y - max_range, mid_y + max_range)
+    # ax.set_zlim(mid_z - max_range, mid_z + max_range)
 
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.legend()
+    # ax.set_xlabel('X')
+    # ax.set_ylabel('Y')
+    # ax.set_zlabel('Z')
+
+    # Compress the z-axis to 1/3 of its original range
+    x_limits = ax.get_xlim()
+    y_limits = ax.get_ylim()
+    z_limits = ax.get_zlim()
+
+    ax.set_box_aspect([1, 1, (z_limits[1] - z_limits[0]) / 3])
+
+    # ax.legend()
     plt.show()
 
 def save_trajectory(trajectory, tangents, gate_poses, dynamic_radius_set, N_samples, samples, traj_file="traj.json", samples_file="samples.json"):
@@ -455,7 +480,7 @@ def save_trajectory(trajectory, tangents, gate_poses, dynamic_radius_set, N_samp
 
 if __name__ == "__main__":
     import argparse
-    ### Default command: python3 scripts/generate_traj.py --config configs/uturn/traj.yaml
+    ### Default command: python3 scripts/generate_traj.py --config configs/${case_name}/traj.yaml
     parser = argparse.ArgumentParser(description="Abstract Gsplat with YAML configuration.")
     parser.add_argument("--config", type=str, required=True, help="Path to the YAML configuration file.")
     args = parser.parse_args()

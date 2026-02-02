@@ -9,6 +9,6 @@ num_waypoints: 50
 gate_radius: 0.5
 base_radius: 0.1
 expand_radius: 0.1
-save_samples: true
+save_samples: false
 N_samples: 10
 case_name: "circle"

@@ -146,7 +146,7 @@ if __name__ == "__main__":
    import argparse
    import yaml
 
-   ### Default command: python3 scripts/traj_render.py --config configs/uturn/render.yaml
+   ### Default command: python3 scripts/traj_render.py --config configs/${case_name}/render.yaml
    parser = argparse.ArgumentParser(description="Load configuration.")
    parser.add_argument("--config", type=str, required=True, help="Path to the YAML configuration file.")
    args = parser.parse_args()
